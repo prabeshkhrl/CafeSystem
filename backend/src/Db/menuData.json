@@ -1,0 +1,58 @@
+[
+  {
+    "id": 2,
+    "name": "Cheese Burger",
+    "category": "Burger",
+    "price": 250,
+    "description": "Juicy burger with cheese, lettuce, tomato, and special sauce.",
+    "available": false
+  },
+  {
+    "id": 3,
+    "name": "Chicken Momo",
+    "category": "Momo",
+    "price": 180,
+    "description": "Steamed chicken dumplings served with spicy tomato achar.",
+    "available": true
+  },
+  {
+    "id": 4,
+    "name": "Chicken Sekuwa",
+    "category": "BBQ",
+    "price": 350,
+    "description": "Grilled chicken pieces seasoned with Nepali spices.",
+    "available": false
+  },
+  {
+    "id": 5,
+    "name": "Cold Coffee",
+    "category": "Drinks",
+    "price": 150,
+    "description": "Chilled coffee blended with milk and ice.",
+    "available": true
+  },
+  {
+    "id": 6,
+    "name": "Chocolate Brownie",
+    "category": "Dessert",
+    "price": 180,
+    "description": "Rich chocolate brownie served as a sweet treat.",
+    "available": true
+  },
+  {
+    "id": 7,
+    "name": "Fresh Lemon Soda",
+    "category": "Drinks",
+    "price": 100,
+    "description": "Refreshing lemon soda with a hint of mint.",
+    "available": false
+  },
+  {
+    "id": 8,
+    "name": "TEA",
+    "category": "Drinks",
+    "price": 100,
+    "description": "TEA.",
+    "available": false
+  }
+]
