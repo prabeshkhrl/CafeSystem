@@ -1,152 +1,403 @@
-import path from "path";
-import { getMenu, saveMenu } from "../Utils/MenuStore.js";
+import mongoose from "mongoose";
+import MenuModel from "../Models/menuModel.js";
+import Restaurant from "../Models/restaurantModel.js";
 
-const filePath = path.resolve("./src/Db/menuData.json");
+// ---------- helpers ----------
+const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
 
-export const getAllMenuItem =async (req, res) => {
-  try {
-    const menu = await getMenu();
-
-    res.status(200).json(menu);
-  } catch (error) {
-    console.log(error);
-    res.status(500).send(error);
-  }
-}
-
-export const addMenuItem =  async (req, res) => {
-  try {
-    const { name, category, price, description, available } = req.body;
-    const response = await getMenu();
-
-    const id =
-      response.length > 0
-        ? Math.max(...response.map((item) => item.id)) + 1
-        : 1;
-    const newData = {
-      id,
-      name,
-      category,
-      price: Number(price),
-      description,
-      available: available === true,
-    };
-
-    response.push(newData);
-
-    await saveMenu(response);
-    res.status(201).json({
-      message: "Menu item added successfully",
-      data: newData,
-    });
-  } catch (error) {
-    console.error("Error adding menu item:", error);
-
-    res.status(500).json({
+const handleError = (err, res) => {
+  if (err.name === "ValidationError") {
+    return res.status(400).json({
       success: false,
-      message: "Failed to add menu item",
-      error: error.message,
+      message: "Validation failed",
+      errors: Object.values(err.errors).map((e) => e.message),
     });
   }
-}
+  if (err.code === 11000) {
+    return res.status(409).json({
+      success: false,
+      message: "Duplicate field value",
+      field: Object.keys(err.keyPattern || {}),
+    });
+  }
+  if (err.name === "CastError") {
+    return res.status(400).json({
+      success: false,
+      message: `Invalid value for ${err.path}`,
+    });
+  }
+  console.error(err);
+  return res.status(500).json({
+    success: false,
+    message: "Internal server error",
+  });
+};
 
-
-export const getById = async (req, res) => {
+/* ------------------------------------------------------------------ */
+/* CREATE MENU ITEM                                                    */
+/* POST /api/menu-items                                                */
+/* ------------------------------------------------------------------ */
+export const createMenuItem = async (req, res) => {
   try {
-    
-    const id = Number(req.params.id);
-    const response = await getMenu();
+    const {
+      name,
+      price,
+      category,
+      description,
+      restaurantId,
+      menuItemImage,
+      isAvailable,
+    } = req.body;
 
-    //console.log(response);
+    // if (
+    //   name === undefined ||
+    //   price === undefined ||
+    //   !category ||
+    //   !restaurantId
+    // ) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "name, price, category and restaurantId are required",
+    //   });
+    // }
 
-    const item = response.find((item) => item.id === id);
+    // if (!isValidId(restaurantId)) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message:
+    //       "Invalid restaurantId — must be a 24-character MongoDB ObjectId",
+    //   });
+    // }
+
+    // // Ensure the restaurant exists
+    // const restaurant = await Restaurant.findById(restaurantId);
+    // if (!restaurant) {
+    //   return res.status(404).json({
+    //     success: false,
+    //     message: "Restaurant not found",
+    //   });
+    // }
+
+    const item = await MenuModel.create({
+      name,
+      price,
+      category,
+      description,
+      restaurantId,
+      menuItemImage,
+      isAvailable,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Menu item created successfully",
+      data: item,
+    });
+  } catch (err) {
+    return handleError(err, res);
+  }
+};
+
+/* ------------------------------------------------------------------ */
+/* GET ALL MENU ITEMS                                                  */
+/* GET /api/menu-items                                                 */
+/* Filters: ?restaurantId=&category=&isAvailable=&search=&minPrice=    */
+/*          &maxPrice=&page=&limit=                                     */
+/* ------------------------------------------------------------------ */
+export const getAllMenuItems = async (req, res) => {
+  try {
+    const {
+      restaurantId,
+      category,
+      isAvailable,
+      search,
+      minPrice,
+      maxPrice,
+      page = 1,
+      limit = 20,
+    } = req.query;
+
+    const filter = {};
+
+    if (restaurantId) {
+      if (!isValidId(restaurantId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid restaurantId",
+        });
+      }
+      filter.restaurantId = restaurantId;
+    }
+
+    if (category) filter.category = category;
+
+    if (isAvailable !== undefined) {
+      filter.isAvailable = isAvailable === "true";
+    }
+
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      filter.price = {};
+      if (minPrice !== undefined) filter.price.$gte = Number(minPrice);
+      if (maxPrice !== undefined) filter.price.$lte = Number(maxPrice);
+    }
+
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+        { category: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [items, total] = await Promise.all([
+      MenuModel.find(filter)
+        .populate("restaurantId", "name address phoneNumber isActive")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum),
+      MenuModel.countDocuments(filter),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      count: items.length,
+      total,
+      page: pageNum,
+      pages: Math.ceil(total / limitNum),
+      data: items,
+    });
+  } catch (err) {
+    return handleError(err, res);
+  }
+};
+
+/* ------------------------------------------------------------------ */
+/* GET MENU ITEMS BY RESTAURANT                                        */
+/* GET /api/menu-items/restaurant/:restaurantId                        */
+/* ------------------------------------------------------------------ */
+export const getMenuItemsByRestaurant = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+
+    if (!isValidId(restaurantId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid restaurantId",
+      });
+    }
+
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: "Restaurant not found",
+      });
+    }
+
+    const items = await MenuModel.find({ restaurantId }).sort({
+      category: 1,
+      name: 1,
+    });
+
+    return res.status(200).json({
+      success: true,
+      count: items.length,
+      restaurant: {
+        _id: restaurant._id,
+        name: restaurant.name,
+        isActive: restaurant.isActive,
+      },
+      data: items,
+    });
+  } catch (err) {
+    return handleError(err, res);
+  }
+};
+
+/* ------------------------------------------------------------------ */
+/* GET MENU ITEM BY ID                                                 */
+/* GET /api/menu-items/:id                                             */
+/* ------------------------------------------------------------------ */
+export const getMenuItemById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!isValidId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid menu item ID",
+      });
+    }
+
+    const item = await MenuModel.findById(id).populate(
+      "restaurantId",
+      "name address phoneNumber isActive"
+    );
 
     if (!item) {
       return res.status(404).json({
+        success: false,
         message: "Menu item not found",
       });
     }
 
-    res.json(item);
-   
-  } catch (error) {
-    res.status(500).json({
-      err: error.message,
+    return res.status(200).json({
+      success: true,
+      data: item,
     });
+  } catch (err) {
+    return handleError(err, res);
   }
-}
+};
 
-
-export const updateItem = async (req, res) => {
+/* ------------------------------------------------------------------ */
+/* UPDATE MENU ITEM                                                    */
+/* PUT /api/menu-items/:id                                             */
+/* ------------------------------------------------------------------ */
+export const updateMenuItem = async (req, res) => {
   try {
-    const { name, category, price, description, available } = req.body;
-    const id = Number(req.params.id);
-    const response = await getMenu();
+    const { id } = req.params;
 
-    const item = response.find((item) => item.id === id);
-      if (!item) {
+    if (!isValidId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid menu item ID",
+      });
+    }
+
+    const allowedUpdates = [
+      "name",
+      "price",
+      "category",
+      "description",
+      // "restaurantId",
+      "menuItemImage",
+      "isAvailable",
+    ];
+
+    const updates = {};
+    for (const key of allowedUpdates) {
+      if (req.body[key] !== undefined) updates[key] = req.body[key];
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No valid fields to update",
+      });
+    }
+
+    // If restaurantId is being changed, validate + ensure exists
+    if (updates.restaurantId) {
+      if (!isValidId(updates.restaurantId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid restaurantId",
+        });
+      }
+      const restaurant = await Restaurant.findById(updates.restaurantId);
+      if (!restaurant) {
+        return res.status(404).json({
+          success: false,
+          message: "Restaurant not found",
+        });
+      }
+    }
+
+    const item = await MenuModel.findByIdAndUpdate(
+      id,
+      { $set: updates },
+      { new: true, runValidators: true }
+    ).populate("restaurantId", "name address");
+
+    if (!item) {
       return res.status(404).json({
+        success: false,
         message: "Menu item not found",
       });
     }
-    
-    
 
-        if (name !== undefined) item.name = name;
-        if (category !== undefined) item.category = category;
-        if (price !== undefined) item.price = Number(price);
-        if (description !== undefined) item.description = description;
-
-        if (available !== undefined) {
-            item.available = available === true || available === 'true';
-        }
-
-    await saveMenu(response);
-    res.status(200).json({
+    return res.status(200).json({
+      success: true,
       message: "Menu item updated successfully",
       data: item,
     });
-    
-  } catch (error) {
-     res.status(500).json({
-      err: error.message,
-    });
+  } catch (err) {
+    return handleError(err, res);
   }
-}
+};
 
-export const deleteItem= async (req, res) => {
-    try {
-        const id = Number(req.params.id);
-        const response = await getMenu();
+/* ------------------------------------------------------------------ */
+/* TOGGLE AVAILABILITY                                                 */
+/* PATCH /api/menu-items/:id/toggle-availability                       */
+/* ------------------------------------------------------------------ */
+export const toggleMenuItemAvailability = async (req, res) => {
+  try {
+    const { id } = req.params;
 
-        // Check if the item exists before deleting
-        const itemExists = response.find(item => item.id === id);
-
-        if (!itemExists) {
-            return res.status(404).json({
-                success: false,
-                message: 'Menu item not found'
-            });
-        }
-
-        // Filter out the item with the matching id
-        const updatedMenu = response.filter(item => item.id !== id);
-
-        // Save the updated menu array back to storage
-        await saveMenu(updatedMenu);
-
-        return res.status(200).json({
-            success: true,
-            message: 'Menu item deleted successfully'
-        });
-
-    } catch (error) {
-        console.error('Error deleting menu item:', error);
-
-        return res.status(500).json({
-            success: false,
-            message: 'Failed to delete menu item',
-            err: error.message
-        });
+    if (!isValidId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid menu item ID",
+      });
     }
-}
+
+    const item = await MenuModel.findById(id);
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        message: "Menu item not found",
+      });
+    }
+
+    item.isAvailable = !item.isAvailable;
+    await item.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `Menu item is now ${
+        item.isAvailable ? "available" : "unavailable"
+      }`,
+      data: item,
+    });
+  } catch (err) {
+    return handleError(err, res);
+  }
+};
+
+/* ------------------------------------------------------------------ */
+/* DELETE MENU ITEM                                                    */
+/* DELETE /api/menu-items/:id                                          */
+/* ------------------------------------------------------------------ */
+export const deleteMenuItem = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!isValidId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid menu item ID",
+      });
+    }
+
+    const item = await MenuModel.findByIdAndDelete(id);
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        message: "Menu item not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Menu item deleted successfully",
+      data: { _id: item._id },
+    });
+  } catch (err) {
+    return handleError(err, res);
+  }
+};

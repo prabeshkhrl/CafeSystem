@@ -1,16 +1,53 @@
 import express from "express";
-import { addMenuItem, deleteItem, getAllMenuItem, getById, updateItem } from "../controllers/MenuController.js";
+import {
+  createMenuItem,
+  getAllMenuItems,
+  getMenuItemsByRestaurant,
+  getMenuItemById,
+  updateMenuItem,
+  toggleMenuItemAvailability,
+  deleteMenuItem,
+} from "../controllers/menuController.js";
+import { requireAuth } from "../Middleware/authMiddleware.js";
+import {
+  requireCreateMenuItemOwnership,
+  requireMenuItemOwnership,
+} from "../Middleware/ownershipMiddleware.js";
 
-const menuRouter = express.Router();
+const router = express.Router();
 
+// ---------- public ----------
+router.get("/", getAllMenuItems);
+router.get("/restaurant/:restaurantId", getMenuItemsByRestaurant);
+router.get("/:id", getMenuItemById);
 
-menuRouter.get("/items", getAllMenuItem);
+// ---------- protected ----------
+router.post(
+  "/",
+  requireAuth,
+  requireCreateMenuItemOwnership,
+  createMenuItem
+);
 
-menuRouter.post("/addItem",addMenuItem);
+router.put(
+  "/:id",
+  requireAuth,
+  requireMenuItemOwnership,
+  updateMenuItem
+);
 
-menuRouter.get("/item/:id", getById);
+router.patch(
+  "/:id/toggle-availability",
+  requireAuth,
+  requireMenuItemOwnership,
+  toggleMenuItemAvailability
+);
 
-menuRouter.patch("/item/:id", updateItem);
+router.delete(
+  "/:id",
+  requireAuth,
+  requireMenuItemOwnership,
+  deleteMenuItem
+);
 
-menuRouter.delete('/item/:id', deleteItem);
-export default menuRouter;
+export default router;
