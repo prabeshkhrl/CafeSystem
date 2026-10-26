@@ -1,5 +1,6 @@
 import express from 'express'
 import dotenv from 'dotenv'
+import cors from "cors";
 import menuRouter from './Routes/MenuRoute.js';
 import userRouter from "./Routes/UserRoute.js"
 import restaurantRoutes from "./Routes/restaurantRoute.js";
@@ -15,6 +16,13 @@ app.use(express.json());
 
 
 
+
+app.use(cors({
+  origin: [
+    "http://localhost:5173",   // Vite
+  ],
+  credentials: true,
+}));
 app.use("/api/orders", orderRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/auth", authRoutes);
