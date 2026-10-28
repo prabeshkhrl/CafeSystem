@@ -16,14 +16,19 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());    
 
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  process.env.CLIENT_URL,           // ← set on Render
+].filter(Boolean);
 
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+  })
+);
 
-app.use(cors({
-  origin: [
-    "http://localhost:5173",   // Vite
-  ],
-  credentials: true,
-}));
 app.use("/api/admins", adminRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/reviews", reviewRoutes);
