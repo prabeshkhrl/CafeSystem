@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Review from "../Models/reviewModel.js";
 import Order from "../Models/orderModel.js";
 import Restaurant from "../Models/restaurantModel.js";
+import { deleteCloudinaryImages } from "../lib/cloudinary.js";
 
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
 
@@ -268,6 +269,7 @@ export const updateReview = async (req, res) => {
 export const deleteReview = async (req, res) => {
   try {
     const { id } = req.params;
+
     if (!isValidId(id)) {
       return res
         .status(400)
@@ -286,13 +288,23 @@ export const deleteReview = async (req, res) => {
     const isAdmin = req.user.role === "admin";
 
     if (!isOwnerOfReview && !isAdmin) {
-      return res
-        .status(403)
-        .json({ success: false, message: "Not allowed to delete this review" });
+      return res.status(403).json({
+        success: false,
+        message: "Not allowed to delete this review",
+      });
+    }
+   
+    // 🔥 Delete photos from Cloudinary BEFORE removing the Mongo doc
+    if (review.images?.length) {
+     await deleteCloudinaryImages(review.images);
+       
     }
 
-    // unlink from order
-    await Order.updateOne({ _id: review.orderId }, { $set: { reviewId: null } });
+    // Unlink from order
+    await Order.updateOne(
+      { _id: review.orderId },
+      { $set: { reviewId: null } }
+    );
 
     await review.deleteOne();
 
@@ -301,9 +313,13 @@ export const deleteReview = async (req, res) => {
       message: "Review deleted",
     });
   } catch (err) {
-    return handleError(err, res);
+    console.error("deleteReview error:", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 };
+
 
 /* ================================================================== */
 /* OWNER REPLY TO REVIEW                                               */

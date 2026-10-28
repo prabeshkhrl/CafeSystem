@@ -1,5 +1,5 @@
 import express from 'express'
-import dotenv from 'dotenv'
+import "dotenv/config"
 import cors from "cors";
 import adminRoutes from "./Routes/adminRoutes.js";
 
@@ -10,7 +10,6 @@ import mongoose from 'mongoose';
 import authRoutes from "./Routes/authRoutes.js";
 import orderRoutes from "./Routes/orderRoutes.js";
 import reviewRoutes from "./Routes/reviewRoutes.js";
-dotenv.config();
 const PORT = process.env.PORT;
 const app = express();
 app.use(express.urlencoded({ extended: true })); 

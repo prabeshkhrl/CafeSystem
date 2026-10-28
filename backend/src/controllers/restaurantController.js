@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Restaurant from "../Models/restaurantModel.js";
 import User from "../Models/userModel.js";
+import { deleteCloudinaryImage } from "../lib/cloudinary.js";
 
 // ---------- helpers ----------
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
@@ -244,19 +245,14 @@ export const getRestaurantsByOwner = async (req, res) => {
 /* ------------------------------------------------------------------ */
 export const updateRestaurant = async (req, res) => {
   try {
-    const { id } = req.params;
+    const restaurant = req.restaurant;  // attached by middleware
 
-    if (!isValidId(id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid restaurant ID",
-      });
-    }
+    const previousLogo = restaurant.restaurantLogo;
+    const previousBanner = restaurant.restaurantBanner;
 
     const allowedUpdates = [
       "name",
       "about",
-      "ownerId",
       "restaurantLogo",
       "restaurantBanner",
       "address",
@@ -264,47 +260,26 @@ export const updateRestaurant = async (req, res) => {
       "paymentMethods",
       "isActive",
     ];
-
-    const updates = {};
     for (const key of allowedUpdates) {
-      if (req.body[key] !== undefined) updates[key] = req.body[key];
+      if (req.body[key] !== undefined) restaurant[key] = req.body[key];
     }
 
-    if (Object.keys(updates).length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "No valid fields to update",
-      });
+    await restaurant.save();
+
+    // 🔥 Delete replaced images
+    if (
+      previousLogo &&
+      restaurant.restaurantLogo &&
+      previousLogo !== restaurant.restaurantLogo
+    ) {
+      await deleteCloudinaryImage(previousLogo);
     }
-
-    // If ownerId is being changed, validate + ensure exists
-    if (updates.ownerId) {
-      if (!isValidId(updates.ownerId)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid ownerId",
-        });
-      }
-      const owner = await User.findById(updates.ownerId);
-      if (!owner) {
-        return res.status(404).json({
-          success: false,
-          message: "Owner (User) not found",
-        });
-      }
-    }
-
-    const restaurant = await Restaurant.findByIdAndUpdate(
-      id,
-      { $set: updates },
-      { new: true, runValidators: true }
-    ).populate("ownerId", "name username email");
-
-    if (!restaurant) {
-      return res.status(404).json({
-        success: false,
-        message: "Restaurant not found",
-      });
+    if (
+      previousBanner &&
+      restaurant.restaurantBanner &&
+      previousBanner !== restaurant.restaurantBanner
+    ) {
+      await deleteCloudinaryImage(previousBanner);
     }
 
     return res.status(200).json({
@@ -313,7 +288,10 @@ export const updateRestaurant = async (req, res) => {
       data: restaurant,
     });
   } catch (err) {
-    return handleValidationError(err, res);
+    console.error("updateRestaurant error:", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 };
 

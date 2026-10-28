@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import MenuModel from "../Models/menuModel.js";
 import Restaurant from "../Models/restaurantModel.js";
+import { deleteCloudinaryImage } from "../lib/cloudinary.js";
 
 // ---------- helpers ----------
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
@@ -261,64 +262,44 @@ export const getMenuItemById = async (req, res) => {
 export const updateMenuItem = async (req, res) => {
   try {
     const { id } = req.params;
-
     if (!isValidId(id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid menu item ID",
-      });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid menu item ID" });
     }
+
+    const item = await MenuModel.findById(id);
+    if (!item) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Menu item not found" });
+    }
+
+    // ownership check … (already in your middleware)
+
+    const previousImage = item.menuItemImage;
 
     const allowedUpdates = [
       "name",
       "price",
       "category",
       "description",
-      // "restaurantId",
       "menuItemImage",
       "isAvailable",
     ];
-
-    const updates = {};
     for (const key of allowedUpdates) {
-      if (req.body[key] !== undefined) updates[key] = req.body[key];
+      if (req.body[key] !== undefined) item[key] = req.body[key];
     }
 
-    if (Object.keys(updates).length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "No valid fields to update",
-      });
-    }
+    await item.save();
 
-    // If restaurantId is being changed, validate + ensure exists
-    if (updates.restaurantId) {
-      if (!isValidId(updates.restaurantId)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid restaurantId",
-        });
-      }
-      const restaurant = await Restaurant.findById(updates.restaurantId);
-      if (!restaurant) {
-        return res.status(404).json({
-          success: false,
-          message: "Restaurant not found",
-        });
-      }
-    }
-
-    const item = await MenuModel.findByIdAndUpdate(
-      id,
-      { $set: updates },
-      { new: true, runValidators: true }
-    ).populate("restaurantId", "name address");
-
-    if (!item) {
-      return res.status(404).json({
-        success: false,
-        message: "Menu item not found",
-      });
+    // 🔥 If the image changed, delete the old one
+    if (
+      previousImage &&
+      item.menuItemImage &&
+      previousImage !== item.menuItemImage
+    ) {
+      await deleteCloudinaryImage(previousImage);
     }
 
     return res.status(200).json({
@@ -327,7 +308,10 @@ export const updateMenuItem = async (req, res) => {
       data: item,
     });
   } catch (err) {
-    return handleError(err, res);
+    console.error("updateMenuItem error:", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 };
 
@@ -376,28 +360,35 @@ export const toggleMenuItemAvailability = async (req, res) => {
 export const deleteMenuItem = async (req, res) => {
   try {
     const { id } = req.params;
-
     if (!isValidId(id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid menu item ID",
-      });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid menu item ID" });
     }
 
-    const item = await MenuModel.findByIdAndDelete(id);
+    const item = await MenuModel.findById(id);
     if (!item) {
-      return res.status(404).json({
-        success: false,
-        message: "Menu item not found",
-      });
+      return res
+        .status(404)
+        .json({ success: false, message: "Menu item not found" });
     }
+
+    // 🔥 Clean up Cloudinary
+    if (item.menuItemImage) {
+      await deleteCloudinaryImage(item.menuItemImage);
+    }
+
+    await item.deleteOne();
 
     return res.status(200).json({
       success: true,
-      message: "Menu item deleted successfully",
+      message: "Menu item deleted",
       data: { _id: item._id },
     });
   } catch (err) {
-    return handleError(err, res);
+    console.error("deleteMenuItem error:", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 };
