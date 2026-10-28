@@ -342,7 +342,8 @@ export const getOrderById = async (req, res) => {
 
     const order = await Order.findById(id)
       .populate("customerId", "name phoneNumber email")
-      .populate("restaurantId", "name address phoneNumber ownerId");
+      .populate("restaurantId", "name address phoneNumber ownerId")
+      .populate("reviewId", "_id rating comment createdAt images"); ;
 
     if (!order) {
       return res.status(404).json({ success: false, message: "Order not found" });
@@ -461,7 +462,7 @@ export const cancelOrder = async (req, res) => {
         .json({ success: false, message: "You can only cancel your own order" });
     }
 
-    const allowed = ["placed", "confirmed", "preparing", "ready", "out_for_delivery"];
+    const allowed = ["placed", "confirmed"];
     if (!allowed.includes(order.status)) {
       return res.status(400).json({
         success: false,

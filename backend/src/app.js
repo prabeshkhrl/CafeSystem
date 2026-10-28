@@ -1,6 +1,8 @@
 import express from 'express'
 import dotenv from 'dotenv'
 import cors from "cors";
+import adminRoutes from "./Routes/adminRoutes.js";
+
 import menuRouter from './Routes/MenuRoute.js';
 import userRouter from "./Routes/UserRoute.js"
 import restaurantRoutes from "./Routes/restaurantRoute.js";
@@ -23,11 +25,12 @@ app.use(cors({
   ],
   credentials: true,
 }));
+app.use("/api/admins", adminRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/auth", authRoutes);
-app.use("/api/menu",menuRouter)
-app.use("/api/user",userRouter)
+app.use("/api/menu-items",menuRouter)
+app.use("/api/users",userRouter)
 app.use("/api/restaurants", restaurantRoutes);
 
 mongoose.connect(process.env.MONGO_URI).then(()=>{

@@ -326,6 +326,159 @@ export const deleteUser = async (req, res) => {
   }
 };
 
+
+export const updateMyProfile = async (req, res) => {
+  try {
+    const { name, username, email, phoneNumber } = req.body;
+
+    const updates = {};
+    if (name !== undefined) {
+      if (!name.trim()) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Name cannot be empty" });
+      }
+      updates.name = name.trim();
+    }
+    if (username !== undefined) {
+      if (!username.trim()) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Username cannot be empty" });
+      }
+      updates.username = username.trim();
+    }
+    if (email !== undefined) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid email" });
+      }
+      updates.email = email.toLowerCase().trim();
+    }
+    if (phoneNumber !== undefined) {
+      updates.phoneNumber = phoneNumber.trim();
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "No fields to update" });
+    }
+
+    // Duplicate check for username/email
+    if (updates.username || updates.email) {
+      const or = [];
+      if (updates.username) or.push({ username: updates.username });
+      if (updates.email) or.push({ email: updates.email });
+
+      const dup = await User.findOne({
+        _id: { $ne: req.user._id },
+        $or: or,
+      });
+      if (dup) {
+        return res.status(409).json({
+          success: false,
+          message:
+            dup.email === updates.email
+              ? "Email already in use"
+              : "Username already taken",
+        });
+      }
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: updates },
+      { new: true, runValidators: true }
+    );
+
+    const safe = user.toObject();
+    delete safe.password;
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated",
+      data: safe,
+    });
+  } catch (err) {
+    if (err.code === 11000) {
+      return res
+        .status(409)
+        .json({ success: false, message: "Duplicate field value" });
+    }
+    if (err.name === "ValidationError") {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: Object.values(err.errors).map((e) => e.message),
+      });
+    }
+    console.error("updateMyProfile error:", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
+  }
+};
+
+/* ------------------------------------------------------------------ */
+/* CHANGE MY PASSWORD                                                  */
+/* PATCH /api/users/me/password                                        */
+/* Body: { currentPassword, newPassword }                              */
+/* ------------------------------------------------------------------ */
+export const changeMyPassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "currentPassword and newPassword are required",
+      });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be at least 6 characters",
+      });
+    }
+    if (currentPassword === newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be different from current",
+      });
+    }
+
+    // `password` is select:false → must explicitly fetch
+    const user = await User.findById(req.user._id).select("+password");
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    const ok = await bcrypt.compare(currentPassword, user.password);
+    if (!ok) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Current password is incorrect" });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Password changed successfully",
+    });
+  } catch (err) {
+    console.error("changeMyPassword error:", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
+  }
+};
+
 /* ------------------------------------------------------------------ */
 /* LOGIN (bonus)                                                       */
 /* POST /api/users/login                                               */
