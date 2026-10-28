@@ -8,11 +8,11 @@ import {
   toggleMenuItemAvailability,
   deleteMenuItem,
 } from "../controllers/menuController.js";
-import { requireAuth } from "../Middleware/authMiddleware.js";
+import { requireAuth } from "../middleware/authMiddleware.js";
 import {
   requireCreateMenuItemOwnership,
   requireMenuItemOwnership,
-} from "../Middleware/ownershipMiddleware.js";
+} from "../middleware/ownershipMiddleware.js";
 
 const router = express.Router();
 

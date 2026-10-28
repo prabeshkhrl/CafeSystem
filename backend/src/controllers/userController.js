@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";           // npm i bcryptjs
-import User from "../Models/userModel.js";
+import User from "../models/userModel.js";
 
 // Helper: validate ObjectId
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);

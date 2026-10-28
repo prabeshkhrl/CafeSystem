@@ -1,8 +1,8 @@
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
-import User from "../Models/userModel.js";
-import Restaurant from "../Models/restaurantModel.js";
-import { signToken } from "../Utils/jwt.js";
+import User from "../models/userModel.js";
+import Restaurant from "../models/restaurantModel.js";
+import { signToken } from "../utils/jwt.js";
 
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
 

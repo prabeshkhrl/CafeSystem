@@ -1,5 +1,5 @@
-import User from "../Models/userModel.js";
-import { verifyToken } from "../Utils/jwt.js";
+import User from "../models/userModel.js";
+import { verifyToken } from "../utils/jwt.js";
 
 /**
  * requireAuth

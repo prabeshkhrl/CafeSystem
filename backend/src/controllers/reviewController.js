@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
-import Review from "../Models/reviewModel.js";
-import Order from "../Models/orderModel.js";
-import Restaurant from "../Models/restaurantModel.js";
+import Review from "../models/reviewModel.js";
+import Order from "../models/orderModel.js";
+import Restaurant from "../models/restaurantModel.js";
 import { deleteCloudinaryImages } from "../lib/cloudinary.js";
 
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);

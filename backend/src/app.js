@@ -1,15 +1,15 @@
 import express from 'express'
 import "dotenv/config"
 import cors from "cors";
-import adminRoutes from "./Routes/adminRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
-import menuRouter from './Routes/MenuRoute.js';
-import userRouter from "./Routes/UserRoute.js"
-import restaurantRoutes from "./Routes/restaurantRoute.js";
+import menuRouter from './routes/MenuRoute.js';
+import userRouter from "./routes/UserRoute.js"
+import restaurantRoutes from "./routes/restaurantRoute.js";
 import mongoose from 'mongoose';
-import authRoutes from "./Routes/authRoutes.js";
-import orderRoutes from "./Routes/orderRoutes.js";
-import reviewRoutes from "./Routes/reviewRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
+import orderRoutes from "./routes/orderRoutes.js";
+import reviewRoutes from "./routes/reviewRoutes.js";
 const PORT = process.env.PORT;
 const app = express();
 app.use(express.urlencoded({ extended: true })); 

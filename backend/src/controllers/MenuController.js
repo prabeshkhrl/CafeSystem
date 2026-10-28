@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
-import MenuModel from "../Models/menuModel.js";
-import Restaurant from "../Models/restaurantModel.js";
+import MenuModel from "../models/menuModel.js";
+import Restaurant from "../models/restaurantModel.js";
 import { deleteCloudinaryImage } from "../lib/cloudinary.js";
 
 // ---------- helpers ----------

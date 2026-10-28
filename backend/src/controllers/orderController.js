@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
-import Order from "../Models/orderModel.js";
-import MenuModel from "../Models/menuModel.js";
-import Restaurant from "../Models/restaurantModel.js";
+import Order from "../models/orderModel.js";
+import MenuModel from "../models/menuModel.js";
+import Restaurant from "../models/restaurantModel.js";
 
 // ---------- helpers ----------
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);

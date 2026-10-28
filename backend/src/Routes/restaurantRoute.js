@@ -11,8 +11,8 @@ import {
 import {
   requireAuth,
   requireAdmin,requireRole
-} from "../Middleware/authMiddleware.js";
-import { requireRestaurantOwnership } from "../Middleware/ownershipMiddleware.js";
+} from "../middleware/authMiddleware.js";
+import { requireRestaurantOwnership } from "../middleware/ownershipMiddleware.js";
 
 const router = express.Router();
 

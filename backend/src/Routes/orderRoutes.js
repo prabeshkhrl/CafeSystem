@@ -8,7 +8,7 @@ import {
   cancelOrder,
   updatePaymentStatus,
 } from "../controllers/orderController.js";
-import { requireAuth } from "../Middleware/authMiddleware.js";
+import { requireAuth } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 

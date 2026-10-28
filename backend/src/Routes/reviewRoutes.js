@@ -9,7 +9,7 @@ import {
   replyToReview,
   toggleHideReview,
 } from "../controllers/reviewController.js";
-import { requireAuth } from "../Middleware/authMiddleware.js";
+import { requireAuth } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 

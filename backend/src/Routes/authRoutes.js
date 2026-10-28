@@ -5,7 +5,7 @@ import {
   registerAdmin,
   loginUser,
 } from "../controllers/authController.js";
-import { requireAuth, requireRole } from "../Middleware/authMiddleware.js";
+import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 

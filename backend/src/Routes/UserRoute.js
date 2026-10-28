@@ -8,7 +8,7 @@ import {
    updateMyProfile,
   changeMyPassword,
 } from "../controllers/userController.js";
-import {requireAuth} from  '../Middleware/authMiddleware.js'
+import {requireAuth} from  '../middleware/authMiddleware.js'
 
 import { loginUser } from "../controllers/authController.js";
 
